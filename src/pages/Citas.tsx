@@ -12,7 +12,7 @@ const Citas = () => {
   const { user } = useAuthStore();
   const { misCitas, isLoading, crearCita } = useCitas();
   const { servicios } = useServicios(1); // Asumiendo barberia_id = 1
-  const { barberos } = useBarberos(1); // Asumiendo barberia_id = 1
+  const { barberos } = useBarberos(); // Sin parámetros ahora
   
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({

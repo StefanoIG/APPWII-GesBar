@@ -47,6 +47,10 @@ export const useServicios = (barberiaId?: number) => {
   return {
     servicios: serviciosQuery.data,
     isLoading: serviciosQuery.isLoading,
+    error: serviciosQuery.error,
+    refetch: serviciosQuery.refetch,
     createServicio: createServicioMutation.mutate,
+    isCreating: createServicioMutation.isPending,
+    createError: createServicioMutation.error,
   };
 };

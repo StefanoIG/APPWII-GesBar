@@ -36,7 +36,47 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       login: (token, user) => {
-        set({ token, user, isAuthenticated: true });
+        console.log('🔧 useAuth.login() llamado con:', {
+          hasToken: !!token,
+          tokenLength: token?.length || 0,
+          tokenPreview: token ? `${token.substring(0, 10)}...` : 'NULL',
+          hasUser: !!user,
+          userName: user?.nombre,
+          userRole: user?.role?.nombre
+        });
+        
+        // Validar que tenemos datos válidos
+        if (!token || token.trim() === '') {
+          console.error('❌ Error: Token vacío o nulo');
+          return;
+        }
+        
+        if (!user) {
+          console.error('❌ Error: Usuario vacío o nulo');
+          return;
+        }
+        
+        // Actualizar el estado
+        set({ 
+          token: token.trim(), 
+          user, 
+          isAuthenticated: true 
+        });
+        
+        // Verificar que se guardó correctamente
+        setTimeout(() => {
+          const newState = useAuthStore.getState();
+          console.log('✅ Estado después de login:', {
+            isAuthenticated: newState.isAuthenticated,
+            hasToken: !!newState.token,
+            tokenLength: newState.token?.length || 0,
+            hasUser: !!newState.user
+          });
+          
+          // Verificar localStorage
+          const localData = localStorage.getItem('auth-storage');
+          console.log('💾 LocalStorage después de login:', localData);
+        }, 100);
       },
       logout: () => {
         set({ token: null, user: null, isAuthenticated: false });

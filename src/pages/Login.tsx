@@ -24,13 +24,44 @@ const Login = () => {
     setError('');
 
     try {
+      console.log('🔄 Iniciando proceso de login...');
+      
       const response = await apiClient.post('/login', {
         email,
         password,
       });
 
-      const { token, user } = response.data;
-      login(token, user);
+      console.log('✅ Respuesta del servidor recibida:', {
+        hasToken: !!response.data.access_token, // ← CORREGIDO: access_token
+        hasUser: !!response.data.user,
+        tokenLength: response.data.access_token?.length || 0, // ← CORREGIDO
+        userRole: response.data.user?.role?.nombre
+      });
+
+      // CORREGIDO: usar access_token en lugar de token
+      const { access_token, user } = response.data;
+      
+      // Debug antes del login
+      console.log('🔄 Llamando a login() con:', {
+        tokenLength: access_token?.length || 0, // ← CORREGIDO
+        userName: user?.nombre,
+        userRole: user?.role?.nombre
+      });
+      
+      login(access_token, user); // ← CORREGIDO: pasar access_token
+      
+      // Debug después del login
+      const stateAfterLogin = useAuthStore.getState();
+      console.log('📊 Estado después del login:', {
+        isAuthenticated: stateAfterLogin.isAuthenticated,
+        hasToken: !!stateAfterLogin.token,
+        tokenLength: stateAfterLogin.token?.length || 0,
+        hasUser: !!stateAfterLogin.user
+      });
+      
+      // Verificar localStorage también
+      const localData = localStorage.getItem('auth-storage');
+      console.log('💾 LocalStorage después del login:', localData);
       
       // Verificar si hay una reserva pendiente
       const pendingBooking = localStorage.getItem('pendingBooking');
@@ -40,6 +71,7 @@ const Login = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
+      console.error('❌ Error en login:', err);
       setError(err.response?.data?.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);

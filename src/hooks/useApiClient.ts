@@ -1,52 +1,88 @@
 // src/hooks/useApiClient.ts
 
 import axios from 'axios';
+import type { AxiosInstance } from 'axios';
 import { API_URL } from '../config';
 import { useAuthStore } from './useAuth';
 
 /**
  * Hook que proporciona una instancia de Axios preconfigurada.
- *
- * Intercepta cada petición para añadir automáticamente el token de autenticación
- * si el usuario está logueado.
+ * Intercepta cada petición para añadir automáticamente el token de autenticación.
  */
-const useApiClient = () => {
+const useApiClient = (): AxiosInstance => {
   const apiClient = axios.create({
     baseURL: API_URL,
-    timeout: 10000, // 10 segundos de timeout
+    timeout: 15000, // 15 segundos de timeout
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
 
-  // Usamos un interceptor para añadir el token a las cabeceras
+  // Interceptor de request mejorado
   apiClient.interceptors.request.use(
     (config) => {
-      const token = useAuthStore.getState().token;
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      // Obtenemos el token del estado global FUERA del interceptor
+      const storeState = useAuthStore.getState();
+      const currentToken = storeState.token;
+      const currentAuth = storeState.isAuthenticated;
+      
+      // Agregamos más debugging para entender qué está pasando
+      console.log('🔍 API Request Debug:', {
+        url: config.url,
+        method: config.method?.toUpperCase(),
+        storeState: {
+          hasToken: !!currentToken,
+          isAuthenticated: currentAuth,
+          tokenLength: currentToken?.length || 0,
+          tokenPreview: currentToken ? `${currentToken.substring(0, 10)}...` : 'NULL'
+        },
+        willAddAuth: !!currentToken
+      });
+      
+      // Si tenemos token, lo agregamos
+      if (currentToken && currentToken.trim() !== '') {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${currentToken}`;
+        console.log('✅ Token agregado a headers');
+      } else {
+        console.warn('⚠️ No se agregó token - token está vacío o nulo');
       }
+      
       return config;
     },
     (error) => {
-      console.error('Error en request interceptor:', error);
+      console.error('❌ Error en request interceptor:', error);
       return Promise.reject(error);
     }
   );
 
-  // Interceptor para manejar errores de respuesta
+  // Interceptor de response
   apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      console.log('✅ API Success:', {
+        url: response.config.url,
+        method: response.config.method?.toUpperCase(),
+        status: response.status,
+        hasData: !!response.data
+      });
+      return response;
+    },
     (error) => {
-      console.error('Error en response interceptor:', error);
-      
-      // Solo cerrar sesión si es un error 401 y el usuario está autenticado
-      if (error.response?.status === 401 && useAuthStore.getState().isAuthenticated) {
-        console.log('Token expirado o inválido, cerrando sesión...');
-        useAuthStore.getState().logout();
-        // Redirigir a login solo si no estamos ya en una página pública
-        if (!window.location.pathname.startsWith('/login') && 
-            !window.location.pathname.startsWith('/register') && 
-            window.location.pathname !== '/') {
-          window.location.href = '/login';
+      console.error('❌ API Error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message || error.message,
+        url: error.config?.url,
+        method: error.config?.method?.toUpperCase(),
+        authState: {
+          isAuthenticated: useAuthStore.getState().isAuthenticated,
+          hasToken: !!useAuthStore.getState().token
         }
+      });
+      
+      // NO hacer logout automático para evitar loops
+      if (error.response?.status === 401) {
+        console.warn('⚠️ 401 Unauthorized - revisa la autenticación manualmente');
       }
       
       return Promise.reject(error);

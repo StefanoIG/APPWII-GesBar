@@ -44,7 +44,7 @@ const PublicServices = () => {
 
   // Hooks para datos
   const { servicios, isLoading: serviciosLoading } = useServicios(selectedBarberiaId || undefined);
-  const { barberos, isLoading: barberosLoading } = useBarberos(selectedBarberiaId || undefined);
+  const { barberos, isLoading: barberosLoading } = useBarberos(); // Sin parámetros
 
   // Lista de barberías (simulada - en un caso real vendría de un hook)
   const barberias = [

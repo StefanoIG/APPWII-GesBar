@@ -31,6 +31,11 @@ const Header = () => {
       baseLinks.splice(3, 0, { to: '/barberos', label: 'Barberos' });
     }
 
+    // Solo admins pueden ver Barberías
+    if (isAdmin) {
+      baseLinks.splice(4, 0, { to: '/barberías', label: 'Barberías' });
+    }
+
     return baseLinks;
   };
 

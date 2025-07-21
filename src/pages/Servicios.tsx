@@ -1,9 +1,121 @@
 // src/pages/Servicios.tsx
+import { useState } from 'react';
 import { useServicios } from '../hooks/useServicios';
+import { useAuthStore } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+
+// Modal para crear servicio
+const CreateServicioModal = ({ isOpen, onClose, onSubmit, isLoading }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: any) => void;
+  isLoading: boolean;
+}) => {
+  const [formData, setFormData] = useState({
+    nombre: '',
+    descripcion: '',
+    duracion: 30,
+    precio: 0,
+    barberia_id: 1
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+        <h2 className="text-2xl font-bold mb-6">Agregar Nuevo Servicio</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="nombre">Nombre del Servicio</Label>
+            <Input
+              id="nombre"
+              value={formData.nombre}
+              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="descripcion">Descripción</Label>
+            <textarea
+              id="descripcion"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              rows={3}
+              value={formData.descripcion}
+              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="duracion">Duración (minutos)</Label>
+            <Input
+              id="duracion"
+              type="number"
+              value={formData.duracion}
+              onChange={(e) => setFormData({ ...formData, duracion: parseInt(e.target.value) })}
+              required
+              min="1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="precio">Precio ($)</Label>
+            <Input
+              id="precio"
+              type="number"
+              step="0.01"
+              value={formData.precio}
+              onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+              required
+              min="0"
+            />
+          </div>
+          <div className="flex space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1"
+            >
+              {isLoading ? 'Creando...' : 'Crear Servicio'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const Servicios = () => {
-  const { servicios, isLoading } = useServicios(1); // Asumiendo barberia_id = 1
+  const { user } = useAuthStore();
+  const { servicios, isLoading, createServicio, isCreating, createError } = useServicios(1);
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const isAdmin = user?.role?.nombre === 'admin';
+  const isDueno = user?.role?.nombre === 'dueño';
+  const canCreateServices = isAdmin || isDueno;
+
+  const handleCreateServicio = (data: any) => {
+    createServicio(data, {
+      onSuccess: () => {
+        setShowCreateModal(false);
+      }
+    });
+  };
 
   if (isLoading) {
     return (
@@ -25,11 +137,21 @@ const Servicios = () => {
             <h1 className="text-3xl font-bold mb-2">Nuestros Servicios</h1>
             <p className="text-indigo-100">Descubre todos los servicios premium que ofrecemos</p>
           </div>
-          <div className="hidden md:block">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="text-2xl font-bold">{servicios?.length || 0}</div>
-              <div className="text-sm text-indigo-100">Servicios Disponibles</div>
+          <div className="flex items-center space-x-4">
+            <div className="hidden md:block">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="text-2xl font-bold">{servicios?.length || 0}</div>
+                <div className="text-sm text-indigo-100">Servicios Disponibles</div>
+              </div>
             </div>
+            {canCreateServices && (
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-white text-indigo-600 hover:bg-gray-50"
+              >
+                + Nuevo Servicio
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -43,100 +165,73 @@ const Servicios = () => {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No hay servicios disponibles</h3>
-          <p className="text-gray-600">Los servicios se cargarán pronto.</p>
+          <p className="text-gray-600 mb-6">
+            {canCreateServices ? 'Agrega el primer servicio a tu barbería' : 'Los servicios se cargarán pronto.'}
+          </p>
+          {canCreateServices && (
+            <Button onClick={() => setShowCreateModal(true)}>
+              + Agregar Primer Servicio
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {servicios.map((servicio: any) => (
-            <div key={servicio.id} className="group bg-white rounded-xl shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden">
-              {/* Service Icon/Image */}
-              <div className="h-32 bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M12 5.5a3 3 0 015.196 2.14l-1.732 1.732M8 21l4-7 4 7M3 4h18" />
-                  </svg>
-                </div>
-              </div>
-              
-              {/* Service Content */}
+            <div key={servicio.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-shadow">
               <div className="p-6">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
-                    {servicio.nombre}
-                  </h3>
-                  <span className="text-2xl font-bold text-purple-600">
-                    ${servicio.precio}
-                  </span>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{servicio.nombre}</h3>
+                    <p className="text-gray-600 text-sm mb-3">{servicio.descripcion}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-purple-600">${servicio.precio}</div>
+                  </div>
                 </div>
-                
-                {servicio.descripcion && (
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {servicio.descripcion}
-                  </p>
-                )}
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center text-sm text-gray-500">
+
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <div className="flex items-center">
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {servicio.duracion} minutos
+                    {servicio.duracion} min
                   </div>
                   <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                    <span className="ml-1 text-sm text-gray-500">4.8</span>
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    Barbería
                   </div>
                 </div>
-                
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
-                  Reservar Ahora
-                </Button>
+
+                <div className="flex space-x-2">
+                  <Button className="flex-1" size="sm">
+                    Reservar
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    Ver Detalles
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Service Categories */}
-      <div className="bg-white rounded-xl shadow-sm border p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-          Categorías de Servicios
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { name: "Cortes", icon: "✂️", count: "8 servicios" },
-            { name: "Barba", icon: "🧔", count: "5 servicios" },
-            { name: "Tratamientos", icon: "✨", count: "3 servicios" },
-            { name: "Combos", icon: "💇‍♂️", count: "4 servicios" }
-          ].map((category, index) => (
-            <div key={index} className="text-center p-4 rounded-lg border hover:bg-gray-50 transition-colors cursor-pointer">
-              <div className="text-3xl mb-2">{category.icon}</div>
-              <h3 className="font-semibold text-gray-900">{category.name}</h3>
-              <p className="text-sm text-gray-500">{category.count}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Modal */}
+      <CreateServicioModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateServicio}
+        isLoading={isCreating}
+      />
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white text-center">
-        <h2 className="text-2xl font-bold mb-4">¿No encuentras lo que buscas?</h2>
-        <p className="text-purple-100 mb-6">
-          Contáctanos para servicios personalizados o consultas especiales
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-            Contactar
-          </Button>
-          <Button className="bg-white text-purple-600 hover:bg-gray-100">
-            Ver Promociones
-          </Button>
+      {/* Error handling */}
+      {createError && (
+        <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          Error al crear servicio: {createError.message}
         </div>
-      </div>
+      )}
     </div>
   );
 };
