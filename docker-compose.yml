@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      # Opcional: Si quieres forzar una URL específica del backend
+      # VITE_API_URL: "http://backend:8000"
+      - NODE_ENV=production
+    networks:
+      - gesbar-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Placeholder para el backend - ajustar según tu configuración
+  backend:
+    # image: your-backend-image:latest
+    # build: ../path-to-backend
+    image: nginx:alpine  # Placeholder temporal
+    ports:
+      - "8000:80"
+    networks:
+      - gesbar-network
+    restart: unless-stopped
+
+networks:
+  gesbar-network:
+    driver: bridge
+
+# Opcional: Para persistir datos
+volumes:
+  gesbar-data:
+    driver: local
