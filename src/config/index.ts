@@ -7,7 +7,7 @@
 const getApiUrl = (): string => {
   // En desarrollo, usar localhost
   if (import.meta.env.DEV) {
-    return 'http://localhost:8000/api';
+    return 'https://localhost:8443/api';
   }
   
   // En producción/Docker, usar variable de entorno o detectar automáticamente
@@ -21,7 +21,7 @@ const getApiUrl = (): string => {
   
   // Si estamos en localhost, asumir que el backend está en el mismo host
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8000/api';
+    return 'https://localhost:8443/api';
   }
   
   // En Docker/producción, usar el hostname actual con puerto 8000

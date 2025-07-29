@@ -17,16 +17,26 @@ services:
       - backend
     restart: unless-stopped
 
-  # Placeholder para el backend - ajustar según tu configuración
+  # Backend - Reemplaza con tu configuración real
   backend:
-    # image: your-backend-image:latest
-    # build: ../path-to-backend
-    image: nginx:alpine  # Placeholder temporal
+    # Opción 1: Si tienes imagen en Docker Hub
+    # image: tu-usuario/gesbar-backend:latest
+    
+    # Opción 2: Si construyes desde código fuente
+    # build: 
+    #   context: ../path-to-backend
+    #   dockerfile: Dockerfile
+    
+    # Temporal: placeholder para testing
+    image: nginx:alpine
     ports:
       - "8000:80"
     networks:
       - gesbar-network
     restart: unless-stopped
+    # environment:
+    #   - DATABASE_URL=postgresql://user:pass@db:5432/gesbar
+    #   - JWT_SECRET=your-secret-key
 
 networks:
   gesbar-network:
