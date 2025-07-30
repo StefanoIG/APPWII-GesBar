@@ -1,12 +1,14 @@
 // src/pages/Perfil.tsx
 import { useState } from 'react';
 import { useAuthStore } from '../hooks/useAuth';
+import useApiClient from '../hooks/useApiClient';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 
 const Perfil = () => {
-  const { user } = useAuthStore();
+  const { user, login } = useAuthStore();
+  const apiClient = useApiClient();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     nombre: user?.nombre || '',
@@ -15,11 +17,24 @@ const Perfil = () => {
     cedula: user?.cedula || '',
   });
 
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aquí iría la lógica para actualizar el perfil
-    console.log('Actualizando perfil:', formData);
-    setIsEditing(false);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // PUT /usuarios/{id}
+      const { data: updatedUser } = await apiClient.put(`/usuarios/${user?.id}`, formData);
+      // Actualizar el estado global (mantener token)
+      login(useAuthStore.getState().token!, updatedUser);
+      setIsEditing(false);
+    } catch (err: any) {
+      setSaveError('Error al guardar cambios');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,15 +137,17 @@ const Perfil = () => {
               />
             </div>
             <div className="flex space-x-3">
-              <Button type="submit">Guardar Cambios</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar Cambios'}</Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsEditing(false)}
+                disabled={saving}
               >
                 Cancelar
               </Button>
             </div>
+            {saveError && <div className="text-red-600 mt-2">{saveError}</div>}
           </form>
         )}
       </div>

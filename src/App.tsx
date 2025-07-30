@@ -9,7 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Citas from './pages/Citas';
 import Servicios from './pages/Servicios';
 import Barberos from './pages/Barberos';
-import Barberías from './pages/Barberías';
+import Usuarios from './pages/Usuarios';
 import Perfil from './pages/Perfil';
 import Unauthorized from './pages/Unauthorized';
 import PublicServices from './pages/PublicServices';
@@ -47,7 +47,7 @@ function App() {
               <Route path="/citas" element={<Citas />} />
               <Route path="/servicios" element={<Servicios />} />
               <Route path="/barberos" element={<Barberos />} />
-              <Route path="/barberías" element={<Barberías />} />
+              <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/perfil" element={<Perfil />} />
               <Route path="/complete-booking" element={<CompleteBooking />} />
             </Route>

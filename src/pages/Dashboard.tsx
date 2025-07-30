@@ -225,6 +225,7 @@ const Dashboard = () => {
           </Button>
         </div>
 
+
         {(isAdmin || isBarbero) && (
           <div className="group bg-white rounded-xl shadow-sm border p-6 hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
@@ -246,6 +247,26 @@ const Dashboard = () => {
             </p>
             <Button asChild className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
               <Link to="/barberos">Ver Barberos</Link>
+            </Button>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="group bg-white rounded-xl shadow-sm border p-6 hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-pink-500/10 rounded-lg flex items-center justify-center group-hover:bg-pink-500/20 transition-colors">
+                <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-pink-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Usuarios</h3>
+            <p className="text-gray-600 mb-4">Gestiona los usuarios del sistema</p>
+            <Button asChild className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700">
+              <Link to="/usuarios">Ver Usuarios</Link>
             </Button>
           </div>
         )}

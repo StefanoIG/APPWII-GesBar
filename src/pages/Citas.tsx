@@ -1,20 +1,35 @@
+
+  // Sincroniza barberos al cargar o actualizar (debe ir después de formData y filteredBarberos)
+
 // src/pages/Citas.tsx
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useCitas, type CreateCitaDto } from '../hooks/useCitas';
 import { useServicios } from '../hooks/useServicios';
-import { useBarberos } from '../hooks/useBarberos';
+// import { useBarberos } from '../hooks/useBarberos';
 import { useAuthStore } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 
+// Extiende el tipo Servicio para incluir barberos
+
 const Citas = () => {
   const { user } = useAuthStore();
   const { misCitas, isLoading, crearCita } = useCitas();
-  const { servicios } = useServicios(1); // Asumiendo barberia_id = 1
-  const { barberos } = useBarberos(); // Sin parámetros ahora
+  const { servicios } = useServicios(1);
+
+
+
+  // Cuando cambia el servicio, resetea el barbero seleccionado
+  const handleServicioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const servicioId = e.target.value;
+    setFormData({ ...formData, servicio_id: servicioId, barbero_id: '' });
+  };
+
   
   const [showForm, setShowForm] = useState(false);
+  const [selectedCita, setSelectedCita] = useState<any | null>(null);
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [formData, setFormData] = useState({
     barberia_id: 1,
     fecha: '',
@@ -23,11 +38,29 @@ const Citas = () => {
     barbero_id: '',
     metodo_pago: 'en_local' as const,
   });
+  // Filtro de citas
+  const [showFiltro, setShowFiltro] = useState(false);
+  const [filtro, setFiltro] = useState<{ estado?: string; barbero_id?: string }>({});
+  // Obtiene los barberos del servicio seleccionado
+  const selectedServicio = (servicios as any[] | undefined)?.find((s) => s.id === parseInt(formData.servicio_id));
+  const barberosDelServicio = selectedServicio?.barberos || [];
+
+  // (MOVER useEffect después de formData para evitar error de variable usada antes de declarar)
 
   const isBarbero = user?.role?.nombre === 'barbero';
 
+  const [formError, setFormError] = useState<string | null>(null);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    // Validar fecha no pasada
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    const fechaSeleccionada = new Date(formData.fecha);
+    if (fechaSeleccionada < hoy) {
+      setFormError('No puedes agendar citas en fechas pasadas.');
+      return;
+    }
     try {
       const citaData: CreateCitaDto = {
         barberia_id: formData.barberia_id,
@@ -48,6 +81,7 @@ const Citas = () => {
         metodo_pago: 'en_local',
       });
     } catch (error) {
+      setFormError('Error al crear cita.');
       console.error('Error al crear cita:', error);
     }
   };
@@ -78,7 +112,54 @@ const Citas = () => {
     );
   }
 
-  const citas = misCitas || [];
+  // Filtrado de citas
+  let citas = misCitas || [];
+  if (filtro.estado) {
+    citas = citas.filter((c: any) => c.estado === filtro.estado);
+  }
+  if (filtro.barbero_id) {
+    citas = citas.filter((c: any) => String(c.barbero_id) === filtro.barbero_id);
+  }
+
+  // Modal de detalles de cita
+  const DetalleCitaModal = ({ cita, onClose }: { cita: any, onClose: () => void }) => {
+    if (!cita) return null;
+    // Comparar user.id con cita.barbero?.user_id para barbero
+    const esBarbero = user?.role?.nombre === 'barbero' && cita.barbero?.user_id === user?.id;
+    const esCliente = user?.role?.nombre === 'cliente' && cita.user_id === user?.id;
+    const puedeTerminar = esBarbero && cita.estado === 'confirmada';
+    const puedeCalificar = esCliente && cita.estado === 'completada' && !cita.calificacion;
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 relative">
+          <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-600" onClick={onClose}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <h2 className="text-2xl font-bold mb-4">Detalle de Cita #{cita.id}</h2>
+          <div className="space-y-2 mb-4">
+            <div><b>Fecha:</b> {new Date(cita.fecha).toLocaleDateString('es-ES')}</div>
+            <div><b>Hora:</b> {cita.hora}</div>
+            <div><b>Servicio:</b> {cita.servicio?.nombre || cita.servicio_id}</div>
+            <div><b>Barbero:</b> {cita.barbero?.user?.nombre || cita.barbero_id}</div>
+            <div><b>Cliente:</b> {cita.cliente?.nombre || cita.cliente_id || cita.user?.nombre || cita.user_id}</div>
+            <div><b>Estado:</b> <span className="capitalize">{cita.estado}</span></div>
+            <div><b>Método de pago:</b> <span className="capitalize">{cita.metodo_pago}</span></div>
+            {cita.calificacion && <div><b>Calificación:</b> {cita.calificacion} ⭐</div>}
+          </div>
+          {/* Botón para barbero: marcar como terminada */}
+          {puedeTerminar && (
+            <Button className="w-full mb-2 bg-green-600 hover:bg-green-700">Marcar como terminada</Button>
+          )}
+          {/* Botón para cliente: calificar */}
+          {puedeCalificar && (
+            <Button className="w-full bg-yellow-500 hover:bg-yellow-600">Calificar</Button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -120,12 +201,69 @@ const Citas = () => {
             </svg>
             Nueva Cita
           </Button>
-          <Button variant="outline">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
-            </svg>
-            Filtrar
-          </Button>
+      <Button variant="outline" onClick={() => setShowFiltro(true)}>
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
+        </svg>
+        Filtrar
+      </Button>
+      {/* Modal de filtro */}
+      {showFiltro && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-xs mx-4 relative">
+            <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-600" onClick={() => setShowFiltro(false)}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-lg font-bold mb-4">Filtrar Citas</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="filtro-estado">Estado</Label>
+                <select
+                  id="filtro-estado"
+                  value={filtro.estado || ''}
+                  onChange={e => setFiltro(f => ({ ...f, estado: e.target.value }))}
+                  className="mt-1 block w-full border rounded px-2 py-2"
+                >
+                  <option value="">Todos</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="confirmada">Confirmada</option>
+                  <option value="completada">Completada</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="filtro-barbero">Barbero</Label>
+                <select
+                  id="filtro-barbero"
+                  value={filtro.barbero_id || ''}
+                  onChange={e => setFiltro(f => ({ ...f, barbero_id: e.target.value }))}
+                  className="mt-1 block w-full border rounded px-2 py-2"
+                >
+                  <option value="">Todos</option>
+                  {Array.from(new Set((misCitas || []).map((c: any) => c.barbero_id))).map((barberoId: any) => {
+                    const barbero = (misCitas || []).find((c: any) => c.barbero_id === barberoId)?.barbero;
+                    return (
+                      <option key={barberoId} value={barberoId}>
+                        {barbero?.user?.nombre || barberoId}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="flex space-x-2 pt-2">
+                <Button type="button" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowFiltro(false)}>
+                  Aplicar
+                </Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => { setFiltro({}); setShowFiltro(false); }}>
+                  Limpiar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       </div>
 
@@ -151,6 +289,7 @@ const Citas = () => {
                   id="fecha"
                   type="date"
                   value={formData.fecha}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                   required
                   className="mt-2"
@@ -175,7 +314,7 @@ const Citas = () => {
                 <select
                   id="servicio_id"
                   value={formData.servicio_id}
-                  onChange={(e) => setFormData({ ...formData, servicio_id: e.target.value })}
+                  onChange={handleServicioChange}
                   required
                   className="mt-2 block w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                 >
@@ -197,9 +336,9 @@ const Citas = () => {
                   className="mt-2 block w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                 >
                   <option value="">Seleccionar barbero</option>
-                  {barberos?.map((barbero: any) => (
+                  {barberosDelServicio.map((barbero: any) => (
                     <option key={barbero.id} value={barbero.id}>
-                      {barbero.nombre}
+                      {barbero.user?.nombre || barbero.nombre}
                     </option>
                   ))}
                 </select>
@@ -221,6 +360,9 @@ const Citas = () => {
               </select>
             </div>
 
+            {formError && (
+              <div className="text-red-600 text-sm mb-2">{formError}</div>
+            )}
             <div className="flex space-x-4 pt-4">
               <Button 
                 type="submit"
@@ -325,7 +467,7 @@ const Citas = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2 ml-4">
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => { setSelectedCita(cita); setShowDetalleModal(true); }}>
                       Ver Detalles
                     </Button>
                     {cita.estado === 'pendiente' && (
@@ -339,6 +481,10 @@ const Citas = () => {
             ))}
           </div>
         </div>
+      )}
+      {/* Modal de detalles de cita */}
+      {showDetalleModal && selectedCita && (
+        <DetalleCitaModal cita={selectedCita} onClose={() => setShowDetalleModal(false)} />
       )}
     </div>
   );

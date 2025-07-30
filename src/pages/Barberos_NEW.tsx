@@ -13,18 +13,27 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }) => {
+
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
     telefono: '',
     password: '',
+    password_confirmation: '',
     biografia: '',
-    barberia_id: 1
+    barberia_id: 1,
   });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setPasswordError(null);
+    if (formData.password !== formData.password_confirmation) {
+      setPasswordError('Las contraseñas no coinciden');
+      return;
+    }
+    // Send payload with password_confirmation
+    onSubmit({ ...formData });
   };
 
   if (!isOpen) return null;
@@ -72,6 +81,19 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
               required
             />
           </div>
+          <div>
+            <Label htmlFor="password_confirmation">Confirmar Contraseña</Label>
+            <Input
+              id="password_confirmation"
+              type="password"
+              value={formData.password_confirmation}
+              onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+              required
+            />
+          </div>
+          {passwordError && (
+            <div className="text-red-600 text-sm">{passwordError}</div>
+          )}
           <div>
             <Label htmlFor="biografia">Biografía (opcional)</Label>
             <textarea

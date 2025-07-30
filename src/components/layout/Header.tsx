@@ -13,30 +13,37 @@ const Header = () => {
     navigate('/');
   };
 
-  const isAdmin = user?.role?.nombre === 'admin';
-  const isBarbero = user?.role?.nombre === 'barbero';
 
   // Links de navegación según el rol
   const getNavLinks = () => {
     if (!isAuthenticated) return [];
-    
-    const baseLinks = [
+
+    // Dueño: ve Barberos
+    if (user?.role?.nombre === 'dueño') {
+      return [
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/citas', label: 'Citas' },
+        { to: '/servicios', label: 'Servicios' },
+        { to: '/barberos', label: 'Barberos' },
+        { to: '/perfil', label: 'Perfil' },
+      ];
+    }
+    // Admin: solo Usuarios y Barberías
+    if (user?.role?.nombre === 'admin') {
+      return [
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/usuarios', label: 'Usuarios' },
+        // { to: '/barberías', label: 'Barberías' }, // Ruta válida pero oculta
+        { to: '/perfil', label: 'Perfil' },
+      ];
+    }
+    // Barbero y cliente: igual que antes, sin Barberosz
+    return [
       { to: '/dashboard', label: 'Dashboard' },
       { to: '/citas', label: 'Citas' },
       { to: '/servicios', label: 'Servicios' },
       { to: '/perfil', label: 'Perfil' },
     ];
-
-    if (isAdmin || isBarbero) {
-      baseLinks.splice(3, 0, { to: '/barberos', label: 'Barberos' });
-    }
-
-    // Solo admins pueden ver Barberías
-    if (isAdmin) {
-      baseLinks.splice(4, 0, { to: '/barberías', label: 'Barberías' });
-    }
-
-    return baseLinks;
   };
 
   const navLinks = getNavLinks();

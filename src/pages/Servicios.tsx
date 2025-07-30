@@ -1,6 +1,8 @@
 // src/pages/Servicios.tsx
 import { useState } from 'react';
 import { useServicios } from '../hooks/useServicios';
+import { useBarberos } from '../hooks/useBarberos';
+import useApiClient from '../hooks/useApiClient';
 import { useAuthStore } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -102,12 +104,20 @@ const CreateServicioModal = ({ isOpen, onClose, onSubmit, isLoading }: {
 const Servicios = () => {
   const { user } = useAuthStore();
   const { servicios, isLoading, createServicio, isCreating, createError } = useServicios(1);
-  
+  // Only fetch barberos for 'dueño' role
+  const { barberos, isLoading: isLoadingBarberos } = useBarberos();
+  const apiClient = useApiClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  // const [selectedServicio, setSelectedServicio] = useState<any>(null); // Removed unused variable
+  const [selectedBarberoId, setSelectedBarberoId] = useState<number | null>(null);
+  const [selectedServicioIds, setSelectedServicioIds] = useState<number[]>([]);
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const isAdmin = user?.role?.nombre === 'admin';
   const isDueno = user?.role?.nombre === 'dueño';
-  const canCreateServices = isAdmin || isDueno;
+  const canCreateServices = isDueno || isAdmin;
 
   const handleCreateServicio = (data: any) => {
     createServicio(data, {
@@ -115,6 +125,24 @@ const Servicios = () => {
         setShowCreateModal(false);
       }
     });
+  };
+
+  // Asignar servicios a barbero (PUT /barberos/{barbero})
+  const handleAssign = async () => {
+    if (!selectedBarberoId || selectedServicioIds.length === 0) return;
+    setAssigning(true);
+    setAssignError(null);
+    try {
+      await apiClient.put(`/barberos/${selectedBarberoId}`, {
+        servicios: selectedServicioIds
+      });
+      setShowAssignModal(false);
+      setSelectedServicioIds([]);
+    } catch (err: any) {
+      setAssignError('Error al asignar servicios');
+    } finally {
+      setAssigning(false);
+    }
   };
 
   if (isLoading) {
@@ -211,10 +239,67 @@ const Servicios = () => {
                   <Button variant="outline" size="sm" className="flex-1">
                     Ver Detalles
                   </Button>
+                  {/* Only dueño can assign services to barberos */}
+                  {isDueno && (
+                    <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowAssignModal(true)}>
+                      Asignar a barbero
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           ))}
+      {/* Modal para asignar servicio a barbero: solo dueño */}
+      {isDueno && showAssignModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold mb-6">Asignar servicios a barbero</h2>
+            <div className="mb-4">
+              <Label htmlFor="barbero-select">Selecciona un barbero</Label>
+              <select
+                id="barbero-select"
+                className="w-full border rounded-lg px-3 py-2 mt-2"
+                value={selectedBarberoId ?? ''}
+                onChange={e => setSelectedBarberoId(Number(e.target.value))}
+                disabled={isLoadingBarberos}
+              >
+                <option value="">Selecciona un barbero</option>
+                {barberos.map((b: any) => (
+                  <option key={b.id} value={b.id}>{b.user?.nombre || b.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="mb-4">
+              <Label>Selecciona servicios</Label>
+              <div className="grid grid-cols-1 gap-2 mt-2">
+                {servicios.map((servicio: any) => (
+                  <label key={servicio.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedServicioIds.includes(servicio.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedServicioIds([...selectedServicioIds, servicio.id]);
+                        } else {
+                          setSelectedServicioIds(selectedServicioIds.filter(id => id !== servicio.id));
+                        }
+                      }}
+                    />
+                    <span>{servicio.nombre}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex space-x-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowAssignModal(false)} className="flex-1">Cancelar</Button>
+              <Button type="button" onClick={handleAssign} className="flex-1" disabled={assigning || !selectedBarberoId || selectedServicioIds.length === 0}>
+                {assigning ? 'Asignando...' : 'Asignar'}
+              </Button>
+            </div>
+            {assignError && <div className="text-red-600 mt-2">{assignError}</div>}
+          </div>
+        </div>
+      )}
         </div>
       )}
 

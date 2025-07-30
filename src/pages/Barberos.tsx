@@ -1,30 +1,75 @@
 // src/pages/Barberos.tsx
-import React, { useState } from 'react';
-import { useBarberos, type Barbero } from '../hooks/useBarberos';
+import { useState } from 'react';
+import { useBarberos } from '../hooks/useBarberos';
+// import { useServicios } from '../hooks/useServicios';
 import { useAuthStore } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 
-// Modal para crear barbero
+// Modal para crear barbero (servicios y password confirmation, lógica fuera del componente)
+import { useCreateBarberoModal } from '../hooks/useCreateBarberoModal';
+
+import useApiClient from '../hooks/useApiClient';
+
+const DIAS_SEMANA = [
+  { value: 'lunes', label: 'Lunes' },
+  { value: 'martes', label: 'Martes' },
+  { value: 'miercoles', label: 'Miércoles' },
+  { value: 'jueves', label: 'Jueves' },
+  { value: 'viernes', label: 'Viernes' },
+  { value: 'sabado', label: 'Sábado' },
+  { value: 'domingo', label: 'Domingo' },
+];
+
+
 const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }) => {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    telefono: '',
-    password: '',
-    biografia: '',
-    barberia_id: 1
-  });
+  const {
+    formData,
+    setFormData,
+    passwordError,
+    servicios,
+    selectedServicios,
+    setSelectedServicios,
+    handleSubmit: _handleSubmit
+  } = useCreateBarberoModal({ isOpen, onSubmit });
+
+  // Permitir múltiples horarios
+  const [horarios, setHorarios] = useState([
+    { dia_semana: 'lunes', hora_inicio: '', hora_fin: '' }
+  ]);
+  const [horarioError, setHorarioError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setHorarioError(null);
+    // Validar que todos los horarios estén completos y no haya días repetidos
+    const dias = horarios.map(h => h.dia_semana);
+    if (dias.length !== new Set(dias).size) {
+      setHorarioError('No puedes repetir días de la semana');
+      return;
+    }
+    if (horarios.some(h => !h.hora_inicio || !h.hora_fin)) {
+      setHorarioError('Debes ingresar hora inicio y fin para todos los días');
+      return;
+    }
+    setSaving(true);
+    onSubmit({
+      ...formData,
+      servicios: selectedServicios,
+      horarios,
+      onClose: () => {
+        setSaving(false);
+        onClose();
+      },
+      onError: () => setSaving(false)
+    });
   };
 
   if (!isOpen) return null;
@@ -73,6 +118,40 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
             />
           </div>
           <div>
+            <Label htmlFor="password_confirmation">Confirmar Contraseña</Label>
+            <Input
+              id="password_confirmation"
+              type="password"
+              value={formData.password_confirmation}
+              onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+              required
+            />
+          </div>
+          {passwordError && (
+            <div className="text-red-600 text-sm">{passwordError}</div>
+          )}
+          <div>
+            <Label>Servicios a asignar</Label>
+            <div className="grid grid-cols-1 gap-2 mt-2">
+              {servicios.map((servicio: any) => (
+                <label key={servicio.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedServicios.includes(servicio.id)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedServicios([...selectedServicios, servicio.id]);
+                      } else {
+                        setSelectedServicios(selectedServicios.filter((id: number) => id !== servicio.id));
+                      }
+                    }}
+                  />
+                  <span>{servicio.nombre}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
             <Label htmlFor="biografia">Biografía (opcional)</Label>
             <textarea
               id="biografia"
@@ -82,242 +161,68 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
               onChange={(e) => setFormData({ ...formData, biografia: e.target.value })}
             />
           </div>
-          <div className="flex space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1"
-            >
-              {isLoading ? 'Creando...' : 'Crear Barbero'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// Modal para ver barbero
-const ViewBarberoModal = ({ isOpen, onClose, barbero }: {
-  isOpen: boolean;
-  onClose: () => void;
-  barbero: Barbero | null;
-}) => {
-  if (!isOpen || !barbero) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-start mb-6">
-          <h2 className="text-2xl font-bold">Información del Barbero</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          {/* Información Personal */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold text-lg mb-4 flex items-center">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Información Personal
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Nombre:</span>
-                <p className="text-gray-900">{barbero.user.nombre}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Email:</span>
-                <p className="text-gray-900">{barbero.user.email}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Teléfono:</span>
-                <p className="text-gray-900">{barbero.user.telefono}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Estado:</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  barbero.estado === 'activo' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {barbero.estado}
-                </span>
-              </div>
+          {/* Horario de trabajo */}
+          <div>
+            <Label>Horarios de trabajo</Label>
+            <div className="flex flex-col gap-4 mt-2">
+              {horarios.map((h, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <select
+                    value={h.dia_semana}
+                    onChange={e => {
+                      const newHorarios = [...horarios];
+                      newHorarios[idx].dia_semana = e.target.value;
+                      setHorarios(newHorarios);
+                    }}
+                    className="border rounded px-2 py-1"
+                  >
+                    {DIAS_SEMANA.map(dia => (
+                      <option key={dia.value} value={dia.value}>{dia.label}</option>
+                    ))}
+                  </select>
+                  <Input
+                    type="time"
+                    value={h.hora_inicio}
+                    onChange={e => {
+                      const newHorarios = [...horarios];
+                      newHorarios[idx].hora_inicio = e.target.value;
+                      setHorarios(newHorarios);
+                    }}
+                    required
+                    placeholder="Hora inicio"
+                  />
+                  <Input
+                    type="time"
+                    value={h.hora_fin}
+                    onChange={e => {
+                      const newHorarios = [...horarios];
+                      newHorarios[idx].hora_fin = e.target.value;
+                      setHorarios(newHorarios);
+                    }}
+                    required
+                    placeholder="Hora fin"
+                  />
+                  {horarios.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-red-500 hover:text-red-700 ml-1"
+                      onClick={() => setHorarios(horarios.filter((_, i) => i !== idx))}
+                      title="Eliminar día"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                className="mt-2 text-blue-600 hover:underline text-sm self-start"
+                onClick={() => setHorarios([...horarios, { dia_semana: '', hora_inicio: '', hora_fin: '' }])}
+              >
+                + Agregar otro día
+              </button>
             </div>
-          </div>
-
-          {/* Biografía */}
-          {barbero.biografia && (
-            <div className="border rounded-lg p-4">
-              <h3 className="font-semibold text-lg mb-2">Biografía</h3>
-              <p className="text-gray-700">{barbero.biografia}</p>
-            </div>
-          )}
-
-          {/* Servicios */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold text-lg mb-4">Servicios Asignados</h3>
-            {barbero.servicios && barbero.servicios.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {barbero.servicios.map((servicio) => (
-                  <div key={servicio.id} className="border rounded-lg p-3">
-                    <h4 className="font-medium">{servicio.nombre}</h4>
-                    <p className="text-sm text-gray-600">{servicio.descripcion}</p>
-                    <div className="flex justify-between text-sm text-gray-500 mt-2">
-                      <span>{servicio.duracion} min</span>
-                      <span>${servicio.precio}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500">No tiene servicios asignados</p>
-            )}
-          </div>
-
-          {/* Información de Barbería */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold text-lg mb-4">Barbería</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Nombre:</span>
-                <p className="text-gray-900">{barbero.barberia.nombre}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Dirección:</span>
-                <p className="text-gray-900">{barbero.barberia.direccion}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Teléfono:</span>
-                <p className="text-gray-900">{barbero.barberia.telefono}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Email:</span>
-                <p className="text-gray-900">{barbero.barberia.email}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <Button onClick={onClose}>
-            Cerrar
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Modal para editar barbero
-const EditBarberoModal = ({ isOpen, onClose, barbero, onSubmit, isLoading }: {
-  isOpen: boolean;
-  onClose: () => void;
-  barbero: Barbero | null;
-  onSubmit: (data: any) => void;
-  isLoading: boolean;
-}) => {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    telefono: '',
-    biografia: '',
-    estado: 'activo' as 'activo' | 'inactivo'
-  });
-
-  // Cargar datos del barbero cuando se abre el modal
-  React.useEffect(() => {
-    if (barbero) {
-      setFormData({
-        nombre: barbero.user.nombre,
-        email: barbero.user.email,
-        telefono: barbero.user.telefono,
-        biografia: barbero.biografia || '',
-        estado: barbero.estado
-      });
-    }
-  }, [barbero]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (barbero) {
-      onSubmit({ id: barbero.id, data: formData });
-    }
-  };
-
-  if (!isOpen || !barbero) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold mb-6">Editar Barbero</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="edit-nombre">Nombre Completo</Label>
-            <Input
-              id="edit-nombre"
-              value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="edit-email">Email</Label>
-            <Input
-              id="edit-email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="edit-telefono">Teléfono</Label>
-            <Input
-              id="edit-telefono"
-              value={formData.telefono}
-              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="edit-biografia">Biografía</Label>
-            <textarea
-              id="edit-biografia"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              rows={3}
-              value={formData.biografia}
-              onChange={(e) => setFormData({ ...formData, biografia: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="edit-estado">Estado</Label>
-            <select
-              id="edit-estado"
-              value={formData.estado}
-              onChange={(e) => setFormData({ ...formData, estado: e.target.value as 'activo' | 'inactivo' })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
+            {horarioError && <div className="text-red-600 text-sm mt-1">{horarioError}</div>}
           </div>
           <div className="flex space-x-3 pt-4">
             <Button
@@ -325,15 +230,16 @@ const EditBarberoModal = ({ isOpen, onClose, barbero, onSubmit, isLoading }: {
               variant="outline"
               onClick={onClose}
               className="flex-1"
+              disabled={saving}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || saving}
               className="flex-1"
             >
-              {isLoading ? 'Guardando...' : 'Guardar Cambios'}
+              {saving ? 'Guardando...' : 'Crear Barbero'}
             </Button>
           </div>
         </form>
@@ -349,46 +255,43 @@ const Barberos = () => {
     stats,
     isLoading,
     createBarbero,
-    updateBarbero,
     isCreating,
-    isUpdating,
     createError
   } = useBarberos();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedBarbero, setSelectedBarbero] = useState<Barbero | null>(null);
 
   const isAdmin = user?.role?.nombre === 'admin';
   const isDueno = user?.role?.nombre === 'dueño';
   const canManageBarberos = isAdmin || isDueno;
 
-  const handleCreateBarbero = (data: any) => {
-    createBarbero(data, {
-      onSuccess: () => {
-        setShowCreateModal(false);
+  const apiClient = useApiClient();
+  const handleCreateBarbero = async (data: any) => {
+    try {
+      // 1. Crear barbero
+      const barberoResponse = await new Promise<any>((resolve, reject) => {
+        createBarbero(data, {
+          onSuccess: (result: any) => resolve(result),
+          onError: reject
+        });
+      });
+      // El backend retorna el barbero en result.data
+      const barbero = barberoResponse?.data;
+      // 2. Crear horarios
+      if (data.horarios && Array.isArray(data.horarios)) {
+        await Promise.all(data.horarios.map((h: any) =>
+          apiClient.post('/horarios', {
+            barbero_id: barbero.id,
+            dia_semana: h.dia_semana,
+            hora_inicio: h.hora_inicio,
+            hora_fin: h.hora_fin,
+          })
+        ));
       }
-    });
-  };
-
-  const handleUpdateBarbero = (data: any) => {
-    updateBarbero(data, {
-      onSuccess: () => {
-        setShowEditModal(false);
-        setSelectedBarbero(null);
-      }
-    });
-  };
-
-  const handleViewBarbero = (barbero: Barbero) => {
-    setSelectedBarbero(barbero);
-    setShowViewModal(true);
-  };
-
-  const handleEditBarbero = (barbero: Barbero) => {
-    setSelectedBarbero(barbero);
-    setShowEditModal(true);
+      if (data.onClose) data.onClose();
+    } catch (err) {
+      if (data.onError) data.onError();
+    }
   };
 
   if (!canManageBarberos) {
@@ -568,7 +471,7 @@ const Barberos = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleViewBarbero(barbero)}
+                      onClick={() => console.log('Ver barbero', barbero.id)}
                     >
                       Ver
                     </Button>
@@ -576,7 +479,7 @@ const Barberos = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleEditBarbero(barbero)}
+                      onClick={() => console.log('Editar barbero', barbero.id)}
                     >
                       Editar
                     </Button>
@@ -588,32 +491,12 @@ const Barberos = () => {
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Modal */}
       <CreateBarberoModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateBarbero}
         isLoading={isCreating}
-      />
-
-      <ViewBarberoModal
-        isOpen={showViewModal}
-        onClose={() => {
-          setShowViewModal(false);
-          setSelectedBarbero(null);
-        }}
-        barbero={selectedBarbero}
-      />
-
-      <EditBarberoModal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setSelectedBarbero(null);
-        }}
-        barbero={selectedBarbero}
-        onSubmit={handleUpdateBarbero}
-        isLoading={isUpdating}
       />
 
       {/* Error handling */}
