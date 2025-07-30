@@ -32,7 +32,7 @@ const Header = () => {
     if (user?.role?.nombre === 'admin') {
       return [
         { to: '/dashboard', label: 'Dashboard' },
-        { to: '/usuarios', label: 'Usuarios' },
+        //{ to: '/usuarios', label: 'Usuarios' },
         // { to: '/barberías', label: 'Barberías' }, // Ruta válida pero oculta
         { to: '/perfil', label: 'Perfil' },
       ];

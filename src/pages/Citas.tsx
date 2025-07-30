@@ -3,6 +3,7 @@
 
 // src/pages/Citas.tsx
 import React, { useState } from 'react';
+import { useCompletarCita } from '../hooks/useCompletarCita';
 import { useCitas, type CreateCitaDto } from '../hooks/useCitas';
 import { useServicios } from '../hooks/useServicios';
 // import { useBarberos } from '../hooks/useBarberos';
@@ -123,12 +124,33 @@ const Citas = () => {
 
   // Modal de detalles de cita
   const DetalleCitaModal = ({ cita, onClose }: { cita: any, onClose: () => void }) => {
+    const { completarCita, loading, error } = useCompletarCita();
     if (!cita) return null;
-    // Comparar user.id con cita.barbero?.user_id para barbero
-    const esBarbero = user?.role?.nombre === 'barbero' && cita.barbero?.user_id === user?.id;
-    const esCliente = user?.role?.nombre === 'cliente' && cita.user_id === user?.id;
+    // El backend retorna barbero_id (id del barbero), y el usuario logueado tiene user.barbero.id
+    const esBarbero = user?.role?.nombre === 'barbero' && user?.barbero?.id === cita.barbero_id;
+    const esCliente = user?.role?.nombre === 'cliente' && (cita.cliente_id === user?.id || cita.user_id === user?.id);
     const puedeTerminar = esBarbero && cita.estado === 'confirmada';
     const puedeCalificar = esCliente && cita.estado === 'completada' && !cita.calificacion;
+
+    const [localError, setLocalError] = useState<string | null>(null);
+    const [localLoading, setLocalLoading] = useState(false);
+
+    const handleCompletar = async () => {
+      setLocalError(null);
+      setLocalLoading(true);
+      const ok = await completarCita(cita.id);
+      setLocalLoading(false);
+      if (ok) {
+        if (typeof window !== 'undefined') {
+          // Refrescar la página o recargar citas si hay función
+          window.location.reload();
+        }
+        onClose();
+      } else {
+        setLocalError(error || 'No se pudo completar la cita');
+      }
+    };
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 relative">
@@ -150,8 +172,11 @@ const Citas = () => {
           </div>
           {/* Botón para barbero: marcar como terminada */}
           {puedeTerminar && (
-            <Button className="w-full mb-2 bg-green-600 hover:bg-green-700">Marcar como terminada</Button>
+            <Button className="w-full mb-2 bg-green-600 hover:bg-green-700" onClick={handleCompletar} disabled={localLoading || loading}>
+              {localLoading || loading ? 'Completando...' : 'Marcar como terminada'}
+            </Button>
           )}
+          {localError && <div className="text-red-600 text-sm mb-2">{localError}</div>}
           {/* Botón para cliente: calificar */}
           {puedeCalificar && (
             <Button className="w-full bg-yellow-500 hover:bg-yellow-600">Calificar</Button>

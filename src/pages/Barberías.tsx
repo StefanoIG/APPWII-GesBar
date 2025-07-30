@@ -5,6 +5,7 @@ import { useAuthStore } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
+import { useUsuarios } from '../hooks/useUsuarios';
 
 // Modal para crear barbería
 const CreateBarberíaModal = ({ isOpen, onClose, onSubmit, isLoading }: {
@@ -19,12 +20,13 @@ const CreateBarberíaModal = ({ isOpen, onClose, onSubmit, isLoading }: {
     direccion: '',
     telefono: '',
     email: '',
-    owner_id: 2 // Por defecto dueño
+    owner_id: ''
   });
+  const { usuarios, isLoading: isUsuariosLoading, error: usuariosError } = useUsuarios();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({ ...formData, owner_id: Number(formData.owner_id) });
   };
 
   if (!isOpen) return null;
@@ -81,6 +83,23 @@ const CreateBarberíaModal = ({ isOpen, onClose, onSubmit, isLoading }: {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
             />
+          </div>
+          <div>
+            <Label htmlFor="owner_id">Dueño (usuario)</Label>
+            <select
+              id="owner_id"
+              value={formData.owner_id}
+              onChange={e => setFormData({ ...formData, owner_id: e.target.value })}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              disabled={isUsuariosLoading}
+            >
+              <option value="">Seleccione un usuario</option>
+              {usuarios.map((u: any) => (
+                <option key={u.id} value={u.id}>{u.nombre} ({u.email})</option>
+              ))}
+            </select>
+            {usuariosError && <div className="text-red-500 text-sm mt-1">Error al cargar usuarios</div>}
           </div>
           <div className="flex space-x-3 pt-4">
             <Button

@@ -9,6 +9,15 @@ interface Role {
   nombre: string;
 }
 
+interface Barbero {
+  id: number;
+  user_id: number;
+  barberia_id: number;
+  foto_url: string | null;
+  biografia: string | null;
+  estado: string;
+}
+
 interface User {
   id: number;
   nombre: string;
@@ -18,6 +27,7 @@ interface User {
   bloqueado: boolean;
   role_id: number;
   role: Role;
+  barbero?: Barbero; // <- opcional, solo si es barbero
 }
 
 interface AuthState {

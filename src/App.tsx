@@ -15,6 +15,7 @@ import Unauthorized from './pages/Unauthorized';
 import PublicServices from './pages/PublicServices';
 import CompleteBooking from './pages/CompleteBooking';
 import TestBackend from './pages/TestBackend';
+import Barberías from './pages/Barberías';
 import './App.css';
 
 // Crear instancia del Query Client
@@ -50,6 +51,7 @@ function App() {
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/perfil" element={<Perfil />} />
               <Route path="/complete-booking" element={<CompleteBooking />} />
+              <Route path="/barberias" element={<Barberías />} />
             </Route>
           </Route>
           

@@ -40,36 +40,36 @@ export const useBarberías = () => {
 
   // Obtener lista de barberías
   const getBarberías = async (): Promise<Barbería[]> => {
-    const response = await apiClient.get<Barbería[]>('/barberías');
+    const response = await apiClient.get<Barbería[]>('/barberias');
     return response.data;
   };
 
   // Crear nueva barbería
   const createBarbería = async (data: CreateBarberíaData): Promise<Barbería> => {
-    const response = await apiClient.post<Barbería>('/barberías', data);
+    const response = await apiClient.post<Barbería>('/barberias', data);
     return response.data;
   };
 
   // Actualizar barbería
   const updateBarbería = async ({ id, data }: { id: number; data: Partial<CreateBarberíaData> }): Promise<Barbería> => {
-    const response = await apiClient.put<Barbería>(`/barberías/${id}`, data);
+    const response = await apiClient.put<Barbería>(`/barberias/${id}`, data);
     return response.data;
   };
 
   // Eliminar barbería
   const deleteBarbería = async (id: number): Promise<void> => {
-    await apiClient.delete(`/barberías/${id}`);
+    await apiClient.delete(`/barberias/${id}`);
   };
 
   // Aprobar barbería
   const aprobarBarbería = async (id: number): Promise<Barbería> => {
-    const response = await apiClient.post<Barbería>(`/barberías/${id}/aprobar`);
+    const response = await apiClient.post<Barbería>(`/barberias/${id}/aprobar`);
     return response.data;
   };
 
   // Rechazar barbería
   const rechazarBarbería = async (id: number): Promise<Barbería> => {
-    const response = await apiClient.post<Barbería>(`/barberías/${id}/rechazar`);
+    const response = await apiClient.post<Barbería>(`/barberias/${id}/rechazar`);
     return response.data;
   };
 
