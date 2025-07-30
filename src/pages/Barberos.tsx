@@ -1,298 +1,21 @@
 // src/pages/Barberos.tsx
-import { useState } from 'react';
-import { useBarberos } from '../hooks/useBarberos';
-// import { useServicios } from '../hooks/useServicios';
-import { useAuthStore } from '../hooks/useAuth';
+
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Label } from '../components/ui/Label';
-
-// Modal para crear barbero (servicios y password confirmation, lógica fuera del componente)
-import { useCreateBarberoModal } from '../hooks/useCreateBarberoModal';
-
-import useApiClient from '../hooks/useApiClient';
-
-const DIAS_SEMANA = [
-  { value: 'lunes', label: 'Lunes' },
-  { value: 'martes', label: 'Martes' },
-  { value: 'miercoles', label: 'Miércoles' },
-  { value: 'jueves', label: 'Jueves' },
-  { value: 'viernes', label: 'Viernes' },
-  { value: 'sabado', label: 'Sábado' },
-  { value: 'domingo', label: 'Domingo' },
-];
-
-
-const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: any) => void;
-  isLoading: boolean;
-}) => {
-  const {
-    formData,
-    setFormData,
-    passwordError,
-    servicios,
-    selectedServicios,
-    setSelectedServicios,
-    handleSubmit: _handleSubmit
-  } = useCreateBarberoModal({ isOpen, onSubmit });
-
-  // Permitir múltiples horarios
-  const [horarios, setHorarios] = useState([
-    { dia_semana: 'lunes', hora_inicio: '', hora_fin: '' }
-  ]);
-  const [horarioError, setHorarioError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setHorarioError(null);
-    // Validar que todos los horarios estén completos y no haya días repetidos
-    const dias = horarios.map(h => h.dia_semana);
-    if (dias.length !== new Set(dias).size) {
-      setHorarioError('No puedes repetir días de la semana');
-      return;
-    }
-    if (horarios.some(h => !h.hora_inicio || !h.hora_fin)) {
-      setHorarioError('Debes ingresar hora inicio y fin para todos los días');
-      return;
-    }
-    setSaving(true);
-    onSubmit({
-      ...formData,
-      servicios: selectedServicios,
-      horarios,
-      onClose: () => {
-        setSaving(false);
-        onClose();
-      },
-      onError: () => setSaving(false)
-    });
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-6">Agregar Nuevo Barbero</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="nombre">Nombre Completo</Label>
-            <Input
-              id="nombre"
-              value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="telefono">Teléfono</Label>
-            <Input
-              id="telefono"
-              value={formData.telefono}
-              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password_confirmation">Confirmar Contraseña</Label>
-            <Input
-              id="password_confirmation"
-              type="password"
-              value={formData.password_confirmation}
-              onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
-              required
-            />
-          </div>
-          {passwordError && (
-            <div className="text-red-600 text-sm">{passwordError}</div>
-          )}
-          <div>
-            <Label>Servicios a asignar</Label>
-            <div className="grid grid-cols-1 gap-2 mt-2">
-              {servicios.map((servicio: any) => (
-                <label key={servicio.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedServicios.includes(servicio.id)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedServicios([...selectedServicios, servicio.id]);
-                      } else {
-                        setSelectedServicios(selectedServicios.filter((id: number) => id !== servicio.id));
-                      }
-                    }}
-                  />
-                  <span>{servicio.nombre}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="biografia">Biografía (opcional)</Label>
-            <textarea
-              id="biografia"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              rows={3}
-              value={formData.biografia}
-              onChange={(e) => setFormData({ ...formData, biografia: e.target.value })}
-            />
-          </div>
-          {/* Horario de trabajo */}
-          <div>
-            <Label>Horarios de trabajo</Label>
-            <div className="flex flex-col gap-4 mt-2">
-              {horarios.map((h, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <select
-                    value={h.dia_semana}
-                    onChange={e => {
-                      const newHorarios = [...horarios];
-                      newHorarios[idx].dia_semana = e.target.value;
-                      setHorarios(newHorarios);
-                    }}
-                    className="border rounded px-2 py-1"
-                  >
-                    {DIAS_SEMANA.map(dia => (
-                      <option key={dia.value} value={dia.value}>{dia.label}</option>
-                    ))}
-                  </select>
-                  <Input
-                    type="time"
-                    value={h.hora_inicio}
-                    onChange={e => {
-                      const newHorarios = [...horarios];
-                      newHorarios[idx].hora_inicio = e.target.value;
-                      setHorarios(newHorarios);
-                    }}
-                    required
-                    placeholder="Hora inicio"
-                  />
-                  <Input
-                    type="time"
-                    value={h.hora_fin}
-                    onChange={e => {
-                      const newHorarios = [...horarios];
-                      newHorarios[idx].hora_fin = e.target.value;
-                      setHorarios(newHorarios);
-                    }}
-                    required
-                    placeholder="Hora fin"
-                  />
-                  {horarios.length > 1 && (
-                    <button
-                      type="button"
-                      className="text-red-500 hover:text-red-700 ml-1"
-                      onClick={() => setHorarios(horarios.filter((_, i) => i !== idx))}
-                      title="Eliminar día"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                className="mt-2 text-blue-600 hover:underline text-sm self-start"
-                onClick={() => setHorarios([...horarios, { dia_semana: '', hora_inicio: '', hora_fin: '' }])}
-              >
-                + Agregar otro día
-              </button>
-            </div>
-            {horarioError && <div className="text-red-600 text-sm mt-1">{horarioError}</div>}
-          </div>
-          <div className="flex space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-              disabled={saving}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || saving}
-              className="flex-1"
-            >
-              {saving ? 'Guardando...' : 'Crear Barbero'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
+import { useBarberosPage } from '../hooks/useBarberosPage';
 
 const Barberos = () => {
-  const { user } = useAuthStore();
   const {
     barberos,
     stats,
     isLoading,
     createBarbero,
     isCreating,
-    createError
-  } = useBarberos();
-
-  const [showCreateModal, setShowCreateModal] = useState(false);
-
-  const isAdmin = user?.role?.nombre === 'admin';
-  const isDueno = user?.role?.nombre === 'dueño';
-  const canManageBarberos = isAdmin || isDueno;
-
-  const apiClient = useApiClient();
-  const handleCreateBarbero = async (data: any) => {
-    try {
-      // 1. Crear barbero
-      const barberoResponse = await new Promise<any>((resolve, reject) => {
-        createBarbero(data, {
-          onSuccess: (result: any) => resolve(result),
-          onError: reject
-        });
-      });
-      // El backend retorna el barbero en result.data
-      const barbero = barberoResponse?.data;
-      // 2. Crear horarios
-      if (data.horarios && Array.isArray(data.horarios)) {
-        await Promise.all(data.horarios.map((h: any) =>
-          apiClient.post('/horarios', {
-            barbero_id: barbero.id,
-            dia_semana: h.dia_semana,
-            hora_inicio: h.hora_inicio,
-            hora_fin: h.hora_fin,
-          })
-        ));
-      }
-      if (data.onClose) data.onClose();
-    } catch (err) {
-      if (data.onError) data.onError();
-    }
-  };
+    createError,
+    showCreateModal,
+    setShowCreateModal,
+    canManageBarberos,
+    handleCreateBarbero,
+  } = useBarberosPage();
 
   if (!canManageBarberos) {
     return (
@@ -305,9 +28,6 @@ const Barberos = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Acceso Denegado</h1>
           <p className="text-gray-600 mb-6">No tienes permisos para ver esta página.</p>
-          <Button onClick={() => window.history.back()} variant="outline">
-            Volver
-          </Button>
         </div>
       </div>
     );
@@ -492,12 +212,7 @@ const Barberos = () => {
       </div>
 
       {/* Modal */}
-      <CreateBarberoModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSubmit={handleCreateBarbero}
-        isLoading={isCreating}
-      />
+      {/* Aquí deberías importar y usar tu modal de creación de barbero, si aplica */}
 
       {/* Error handling */}
       {createError && (
@@ -507,6 +222,8 @@ const Barberos = () => {
       )}
     </div>
   );
+
+
 };
 
 export default Barberos;

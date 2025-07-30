@@ -233,12 +233,12 @@ const Servicios = () => {
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button className="flex-1" size="sm">
+                  {/* <Button className="flex-1" size="sm">
                     Reservar
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  </Button> */}
+                  {/* <Button variant="outline" size="sm" className="flex-1">
                     Ver Detalles
-                  </Button>
+                  </Button> */}
                   {/* Only dueño can assign services to barberos */}
                   {isDueno && (
                     <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowAssignModal(true)}>

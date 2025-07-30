@@ -1,6 +1,7 @@
 // src/components/layout/Header.tsx
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../hooks/useAuth';
+import { useHeaderNavLinks } from '../../hooks/useHeaderNavLinks';
 import { Button } from '../ui/Button';
 
 const Header = () => {
@@ -14,39 +15,8 @@ const Header = () => {
   };
 
 
-  // Links de navegación según el rol
-  const getNavLinks = () => {
-    if (!isAuthenticated) return [];
-
-    // Dueño: ve Barberos
-    if (user?.role?.nombre === 'dueño') {
-      return [
-        { to: '/dashboard', label: 'Dashboard' },
-        { to: '/citas', label: 'Citas' },
-        { to: '/servicios', label: 'Servicios' },
-        { to: '/barberos', label: 'Barberos' },
-        { to: '/perfil', label: 'Perfil' },
-      ];
-    }
-    // Admin: solo Usuarios y Barberías
-    if (user?.role?.nombre === 'admin') {
-      return [
-        { to: '/dashboard', label: 'Dashboard' },
-        //{ to: '/usuarios', label: 'Usuarios' },
-        // { to: '/barberías', label: 'Barberías' }, // Ruta válida pero oculta
-        { to: '/perfil', label: 'Perfil' },
-      ];
-    }
-    // Barbero y cliente: igual que antes, sin Barberosz
-    return [
-      { to: '/dashboard', label: 'Dashboard' },
-      { to: '/citas', label: 'Citas' },
-      { to: '/servicios', label: 'Servicios' },
-      { to: '/perfil', label: 'Perfil' },
-    ];
-  };
-
-  const navLinks = getNavLinks();
+  // Links de navegación según el rol (lógica extraída a hook)
+  const navLinks = useHeaderNavLinks();
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
