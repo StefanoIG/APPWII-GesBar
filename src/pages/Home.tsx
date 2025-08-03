@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { useEffect } from 'react';
+import { useServicios } from '../hooks/useServicios';
 
 const Home = () => {
   const { isAuthenticated, user } = useAuthStore();
@@ -15,10 +16,14 @@ const Home = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
+
   // Solo mostrar la landing page si no está autenticado
   if (isAuthenticated) {
     return null; // O un loading spinner
   }
+
+  // Obtener servicios reales (sin barbería, muestra todos los públicos)
+  const { servicios = [], isLoading } = useServicios();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -30,7 +35,7 @@ const Home = () => {
           </div>
           <div className="space-x-4">
             <Button asChild variant="ghost" className="text-white hover:bg-white/10">
-              <Link to="/services-public">Ver Servicios</Link>
+              <Link to="/login">Ver Servicios</Link>
             </Button>
             <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
               <Link to="/login">Iniciar Sesión</Link>
@@ -58,7 +63,7 @@ const Home = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg px-8 py-4">
-                <Link to="/services-public">Explorar Servicios</Link>
+                <Link to="/login">Explorar Servicios</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-4">
                 <Link to="/register">Crear Cuenta</Link>
@@ -136,25 +141,28 @@ const Home = () => {
               Desde cortes clásicos hasta estilos modernos, tenemos todo lo que necesitas
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {[
-              { name: "Corte Clásico", price: "$15", icon: "✂️" },
-              { name: "Barba y Bigote", price: "$12", icon: "🧔" },
-              { name: "Corte + Barba", price: "$25", icon: "💇‍♂️" },
-              { name: "Tratamiento Premium", price: "$40", icon: "✨" }
-            ].map((service, index) => (
-              <div key={index} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 text-center hover:bg-white/10 transition-all duration-300">
-                <div className="text-4xl mb-4">{service.icon}</div>
-                <h3 className="text-xl font-semibold text-white mb-2">{service.name}</h3>
-                <p className="text-2xl font-bold text-purple-400">{service.price}</p>
-              </div>
-            ))}
-          </div>
-          
+          {isLoading ? (
+            <div className="text-center text-white text-lg">Cargando servicios...</div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              {servicios.slice(0, 4).map((service) => (
+                <button
+                  key={service.id}
+                  className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 text-center hover:bg-white/10 transition-all duration-300 w-full focus:outline-none"
+                  onClick={() => navigate('/login')}
+                  type="button"
+                >
+                  <div className="text-4xl mb-4">💈</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">{service.nombre}</h3>
+                  <p className="text-gray-300 mb-2 min-h-[2.5rem]">{service.descripcion || 'Sin descripción'}</p>
+                  <p className="text-2xl font-bold text-purple-400">${parseFloat(service.precio).toFixed(2)}</p>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="text-center">
             <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              <Link to="/services-public">Ver Todos los Servicios</Link>
+              <Link to="/login">Ver Todos los Servicios</Link>
             </Button>
           </div>
         </div>
@@ -171,7 +179,7 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="bg-white text-purple-900 hover:bg-gray-100">
-              <Link to="/services-public">Reservar Ahora</Link>
+              <Link to="/login">Reservar Ahora</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10">
               <Link to="/register">Crear Cuenta</Link>

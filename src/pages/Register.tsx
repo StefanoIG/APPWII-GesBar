@@ -51,7 +51,7 @@ const Register = () => {
     }
 
     try {
-      const response = await apiClient.post('/auth/register', formData);
+      const response = await apiClient.post('/register', formData);
       const { token, user } = response.data;
       login(token, user);
       
