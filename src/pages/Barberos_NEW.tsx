@@ -1,12 +1,12 @@
 // src/pages/Barberos.tsx
-import { useState } from 'react';
-import { useBarberos } from '../hooks/useBarberos';
-import { useAuthStore } from '../hooks/useAuth';
+
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
+import { useBarberosPage } from '../hooks/useBarberosPage';
+import { useState } from 'react';
 
-// Modal para crear barbero
+// Modal para crear barbero (copiado de Barberos_NEW)
 const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +14,7 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
   isLoading: boolean;
 }) => {
 
+  const { servicios = [] } = require('../hooks/useServicios').useServicios(1);
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -24,6 +25,21 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
     barberia_id: 1,
   });
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [selectedServicios, setSelectedServicios] = useState<number[]>([]);
+  const [horarios, setHorarios] = useState([
+    { dia_semana: '', hora_inicio: '', hora_fin: '' }
+  ]);
+
+  const addHorario = () => setHorarios([...horarios, { dia_semana: '', hora_inicio: '', hora_fin: '' }]);
+  const removeHorario = (idx: number) => setHorarios(horarios.filter((_, i) => i !== idx));
+  const updateHorario = (idx: number, field: string, value: string) => {
+    setHorarios(horarios.map((h, i) => i === idx ? { ...h, [field]: value } : h));
+  };
+
+  const handleServicioChange = (id: number, checked: boolean) => {
+    if (checked) setSelectedServicios([...selectedServicios, id]);
+    else setSelectedServicios(selectedServicios.filter(sid => sid !== id));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +48,7 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
       setPasswordError('Las contraseñas no coinciden');
       return;
     }
-    // Send payload with password_confirmation
-    onSubmit({ ...formData });
+    onSubmit({ ...formData, servicios: selectedServicios, horarios });
   };
 
   if (!isOpen) return null;
@@ -91,33 +106,70 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
               required
             />
           </div>
-          {passwordError && (
-            <div className="text-red-600 text-sm">{passwordError}</div>
-          )}
           <div>
-            <Label htmlFor="biografia">Biografía (opcional)</Label>
-            <textarea
+            <Label htmlFor="biografia">Biografía</Label>
+            <Input
               id="biografia"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              rows={3}
               value={formData.biografia}
               onChange={(e) => setFormData({ ...formData, biografia: e.target.value })}
             />
           </div>
+
+          {/* Selección de servicios */}
+          <div>
+            <Label>Servicios que puede realizar</Label>
+            <div className="grid grid-cols-1 gap-2 mt-2">
+              {servicios.map((servicio: any) => (
+                <label key={servicio.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedServicios.includes(servicio.id)}
+                    onChange={e => handleServicioChange(servicio.id, e.target.checked)}
+                  />
+                  <span>{servicio.nombre}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Horarios */}
+          <div>
+            <Label>Horarios de trabajo</Label>
+            {horarios.map((h, idx) => (
+              <div key={idx} className="flex space-x-2 mb-2">
+                <select
+                  value={h.dia_semana}
+                  onChange={e => updateHorario(idx, 'dia_semana', e.target.value)}
+                  className="border rounded px-2"
+                >
+                  <option value="">Día</option>
+                  <option value="lunes">Lunes</option>
+                  <option value="martes">Martes</option>
+                  <option value="miércoles">Miércoles</option>
+                  <option value="jueves">Jueves</option>
+                  <option value="viernes">Viernes</option>
+                  <option value="sábado">Sábado</option>
+                  <option value="domingo">Domingo</option>
+                </select>
+                <Input
+                  type="time"
+                  value={h.hora_inicio}
+                  onChange={e => updateHorario(idx, 'hora_inicio', e.target.value)}
+                />
+                <Input
+                  type="time"
+                  value={h.hora_fin}
+                  onChange={e => updateHorario(idx, 'hora_fin', e.target.value)}
+                />
+                <Button type="button" variant="outline" onClick={() => removeHorario(idx)}>Quitar</Button>
+              </div>
+            ))}
+            <Button type="button" onClick={addHorario} className="mt-2">+ Agregar horario</Button>
+          </div>
+          {passwordError && <div className="text-red-600 text-sm">{passwordError}</div>}
           <div className="flex space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1"
-            >
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+            <Button type="submit" disabled={isLoading} className="flex-1">
               {isLoading ? 'Creando...' : 'Crear Barbero'}
             </Button>
           </div>
@@ -128,29 +180,18 @@ const CreateBarberoModal = ({ isOpen, onClose, onSubmit, isLoading }: {
 };
 
 const Barberos = () => {
-  const { user } = useAuthStore();
   const {
     barberos,
     stats,
     isLoading,
     createBarbero,
     isCreating,
-    createError
-  } = useBarberos();
-
-  const [showCreateModal, setShowCreateModal] = useState(false);
-
-  const isAdmin = user?.role?.nombre === 'admin';
-  const isDueno = user?.role?.nombre === 'dueño';
-  const canManageBarberos = isAdmin || isDueno;
-
-  const handleCreateBarbero = (data: any) => {
-    createBarbero(data, {
-      onSuccess: () => {
-        setShowCreateModal(false);
-      }
-    });
-  };
+    createError,
+    showCreateModal,
+    setShowCreateModal,
+    canManageBarberos,
+    handleCreateBarbero,
+  } = useBarberosPage();
 
   if (!canManageBarberos) {
     return (
@@ -163,9 +204,6 @@ const Barberos = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Acceso Denegado</h1>
           <p className="text-gray-600 mb-6">No tienes permisos para ver esta página.</p>
-          <Button onClick={() => window.history.back()} variant="outline">
-            Volver
-          </Button>
         </div>
       </div>
     );
@@ -176,7 +214,7 @@ const Barberos = () => {
       <div className="flex justify-center items-center h-64">
         <div className="flex items-center space-x-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-          <div className="text-lg text-gray-600">Cargando barberos...</div>
+          <span className="text-gray-600">Cargando barberos...</span>
         </div>
       </div>
     );
@@ -215,7 +253,7 @@ const Barberos = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -285,8 +323,8 @@ const Barberos = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-              {barberos.map((barbero) => (
+            <div className="p-6 space-y-4">
+              {barberos.map((barbero: any) => (
                 <div key={barbero.id} className="bg-gray-50 rounded-lg p-6 border">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3">

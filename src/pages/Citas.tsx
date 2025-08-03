@@ -3,6 +3,7 @@
 
 // src/pages/Citas.tsx
 import React, { useState } from 'react';
+import useApiClient from '../hooks/useApiClient';
 import { useCompletarCita } from '../hooks/useCompletarCita';
 import { useCitas, type CreateCitaDto } from '../hooks/useCitas';
 import { useServicios } from '../hooks/useServicios';
@@ -125,6 +126,12 @@ const Citas = () => {
   // Modal de detalles de cita
   const DetalleCitaModal = ({ cita, onClose }: { cita: any, onClose: () => void }) => {
     const { completarCita, loading, error } = useCompletarCita();
+    const api = useApiClient();
+    const [showCalificar, setShowCalificar] = useState(false);
+    const [calificacion, setCalificacion] = useState(5);
+    const [comentario, setComentario] = useState('');
+    const [calificando, setCalificando] = useState(false);
+    const [calificarError, setCalificarError] = useState<string|null>(null);
     if (!cita) return null;
     // El backend retorna barbero_id (id del barbero), y el usuario logueado tiene user.barbero.id
     const esBarbero = user?.role?.nombre === 'barbero' && user?.barbero?.id === cita.barbero_id;
@@ -142,12 +149,31 @@ const Citas = () => {
       setLocalLoading(false);
       if (ok) {
         if (typeof window !== 'undefined') {
-          // Refrescar la página o recargar citas si hay función
           window.location.reload();
         }
         onClose();
       } else {
         setLocalError(error || 'No se pudo completar la cita');
+      }
+    };
+
+    const handleEnviarCalificacion = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setCalificarError(null);
+      setCalificando(true);
+      try {
+        await api.post('/calificaciones', {
+          cita_id: cita.id,
+          puntuacion: calificacion,
+          comentario,
+        });
+        setShowCalificar(false);
+        if (typeof window !== 'undefined') window.location.reload();
+        onClose();
+      } catch (err: any) {
+        setCalificarError(err?.response?.data?.message || 'Error al enviar calificación');
+      } finally {
+        setCalificando(false);
       }
     };
 
@@ -165,10 +191,25 @@ const Citas = () => {
             <div><b>Hora:</b> {cita.hora}</div>
             <div><b>Servicio:</b> {cita.servicio?.nombre || cita.servicio_id}</div>
             <div><b>Barbero:</b> {cita.barbero?.user?.nombre || cita.barbero_id}</div>
-            <div><b>Cliente:</b> {cita.cliente?.nombre || cita.cliente_id || cita.user?.nombre || cita.user_id}</div>
+            {/* Solo mostrar Cliente si el usuario es dueño */}
+            {user?.role?.nombre === 'dueño' && (
+              <div><b>Cliente:</b> {cita.cliente?.nombre || cita.user?.nombre || 'Sin nombre'}</div>
+            )}
             <div><b>Estado:</b> <span className="capitalize">{cita.estado}</span></div>
             <div><b>Método de pago:</b> <span className="capitalize">{cita.metodo_pago}</span></div>
-            {cita.calificacion && <div><b>Calificación:</b> {cita.calificacion} ⭐</div>}
+            {cita.calificacion && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-2">
+                <div className="flex items-center mb-1">
+                  <b>Calificación:</b>
+                  <span className="ml-2 text-yellow-500 font-bold">
+                    {Array.from({length: cita.calificacion.puntuacion}).map((_,i) => (
+                      <svg key={i} className="inline w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
+                    ))}
+                  </span>
+                </div>
+                <div className="text-gray-700"><b>Comentario:</b> {cita.calificacion.comentario}</div>
+              </div>
+            )}
           </div>
           {/* Botón para barbero: marcar como terminada */}
           {puedeTerminar && (
@@ -179,7 +220,56 @@ const Citas = () => {
           {localError && <div className="text-red-600 text-sm mb-2">{localError}</div>}
           {/* Botón para cliente: calificar */}
           {puedeCalificar && (
-            <Button className="w-full bg-yellow-500 hover:bg-yellow-600">Calificar</Button>
+            <Button className="w-full bg-yellow-500 hover:bg-yellow-600" onClick={() => setShowCalificar(true)}>Calificar</Button>
+          )}
+          {/* Modal de calificación */}
+          {showCalificar && (
+            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 relative">
+                <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-600" onClick={() => setShowCalificar(false)}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <h3 className="text-xl font-bold mb-4">Calificar Servicio</h3>
+                <form onSubmit={handleEnviarCalificacion} className="space-y-4">
+                  <div>
+                    <Label>Puntuación</Label>
+                    <div className="flex space-x-1 mt-2">
+                      {[1,2,3,4,5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setCalificacion(star)}
+                          className={star <= calificacion ? 'text-yellow-400' : 'text-gray-300'}
+                          aria-label={`Puntuación ${star}`}
+                        >
+                          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Comentario</Label>
+                    <Input
+                      as="textarea"
+                      rows={3}
+                      value={comentario}
+                      onChange={e => setComentario(e.target.value)}
+                      placeholder="¿Cómo fue tu experiencia?"
+                      className="w-full border rounded px-2 py-2 mt-1"
+                    />
+                  </div>
+                  {calificarError && <div className="text-red-600 text-sm">{calificarError}</div>}
+                  <div className="flex space-x-2 pt-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setShowCalificar(false)}>Cancelar</Button>
+                    <Button type="submit" className="flex-1 bg-yellow-500 hover:bg-yellow-600" disabled={calificando}>
+                      {calificando ? 'Enviando...' : 'Enviar Calificación'}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
           )}
         </div>
       </div>

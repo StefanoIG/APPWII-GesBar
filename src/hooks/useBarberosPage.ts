@@ -41,6 +41,7 @@ export const useBarberosPage = () => {
           })
         ));
       }
+      setShowCreateModal(false);
       if (data.onClose) data.onClose();
     } catch (err) {
       if (data.onError) data.onError();
