@@ -251,13 +251,12 @@ const Citas = () => {
                   </div>
                   <div>
                     <Label>Comentario</Label>
-                    <Input
-                      as="textarea"
+                    <textarea
                       rows={3}
                       value={comentario}
                       onChange={e => setComentario(e.target.value)}
                       placeholder="¿Cómo fue tu experiencia?"
-                      className="w-full border rounded px-2 py-2 mt-1"
+                      className="w-full border rounded px-2 py-2 mt-1 resize-none"
                     />
                   </div>
                   {calificarError && <div className="text-red-600 text-sm">{calificarError}</div>}
@@ -358,10 +357,10 @@ const Citas = () => {
                 >
                   <option value="">Todos</option>
                   {Array.from(new Set((misCitas || []).map((c: any) => c.barbero_id))).map((barberoId: any) => {
-                    const barbero = (misCitas || []).find((c: any) => c.barbero_id === barberoId)?.barbero;
+                    const cita = (misCitas || []).find((c: any) => c.barbero_id === barberoId) as any;
                     return (
                       <option key={barberoId} value={barberoId}>
-                        {barbero?.user?.nombre || barberoId}
+                        {cita?.barbero?.user?.nombre || barberoId}
                       </option>
                     );
                   })}

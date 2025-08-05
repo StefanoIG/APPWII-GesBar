@@ -10,22 +10,13 @@ const getApiUrl = (): string => {
     return 'https://localhost:8443/api';
   }
   
-  // En producción/Docker, usar variable de entorno o detectar automáticamente
+  // En producción, usar variable de entorno o la URL por defecto de Render
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
   
-  // Fallback: usar la IP del host actual con puerto 8000
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  
-  // Si estamos en localhost, asumir que el backend está en el mismo host
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://localhost:8443/api';
-  }
-  
-  // En Docker/producción, usar el hostname actual con puerto 8000
-  return `${protocol}//${hostname}:8000/api`;
+  // URL por defecto para producción en Render
+  return 'https://appwwii-gestionbarberias.onrender.com/api';
 };
 
 export const API_URL = getApiUrl();

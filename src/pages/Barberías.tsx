@@ -1,4 +1,5 @@
 // src/pages/Barberías.tsx
+import { useState } from 'react';
 import { useBarberiasPage } from '../hooks/useBarberiasPage';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -126,7 +127,6 @@ const Barberías = () => {
   const {
     barberías,
     isLoading,
-    createBarbería,
     aprobarBarbería,
     rechazarBarbería,
     isCreating,

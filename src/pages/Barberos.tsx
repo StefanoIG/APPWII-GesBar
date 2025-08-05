@@ -185,7 +185,6 @@ const Barberos = () => {
     barberos,
     stats,
     isLoading,
-    createBarbero,
     isCreating,
     createError,
     showCreateModal,

@@ -67,11 +67,7 @@ const Perfil = () => {
       <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between mb-8 gap-4">
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white">
-            {user?.foto_url ? (
-              <img src={user.foto_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-            ) : (
-              <span>{initials}</span>
-            )}
+            <span>{initials}</span>
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">{user?.nombre}</h1>
